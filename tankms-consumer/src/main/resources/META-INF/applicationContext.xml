@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.3.xsd http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+
+    <context:property-placeholder
+            ignore-resource-not-found="false"
+            location="classpath*:consumer.properties" file-encoding="UTF-8"/>
+
+    <!-- 定义consumer的参数 -->
+    <bean id="consumerProperties" class="java.util.HashMap">
+        <constructor-arg>
+            <map>
+                <entry key="bootstrap.servers" value="${bootstrap.servers}"/>
+                <entry key="group.id" value="${group.id}"/>
+                <!--<entry key="metadata.max.age.ms" value="60000" />-->
+                <entry key="enable.auto.commit" value="${enable.auto.commit}"/>
+                <entry key="auto.commit.interval.ms" value="1000"/>
+                <entry key="session.timeout.ms" value="15000"/>
+                <entry key="key.deserializer" value="org.apache.kafka.common.serialization.StringDeserializer"/>
+                <entry key="value.deserializer" value="org.apache.kafka.common.serialization.StringDeserializer"/>
+                <entry key="auto.offset.reset" value="earliest"/>
+                <!--<entry key="auto.offset.reset" value="none"/>-->
+            </map>
+        </constructor-arg>
+    </bean>
+
+    <!-- 创建consumerFactory bean -->
+    <bean name="consumerFactory" class="org.springframework.kafka.core.DefaultKafkaConsumerFactory">
+        <constructor-arg>
+            <ref bean="consumerProperties"/>
+        </constructor-arg>
+    </bean>
+
+    <!--<bean id="consumerTaskExecutor" class="org.springframework.core.task.SimpleAsyncTaskExecutor">-->
+    <!--</bean>-->
+
+    <!-- 消费者容器配置信息 -->
+    <bean id="containerProperties" class="org.springframework.kafka.listener.config.ContainerProperties">
+        <constructor-arg name="topics" value="${topics:split(',')}"/>
+        <property name="messageListener" ref="kafkaMessageListenerAdapter"/>
+        <property name="ackMode" value="${ackMode}"/>
+        <property name="pollTimeout" value="3000"/>
+        <!--<property name="consumerTaskExecutor" ref="consumerTaskExecutor"/>-->
+    </bean>
+
+    <!-- 创建KafkaMessageListenerContainer -->
+    <bean id="messageListenerContainer" class="org.springframework.kafka.listener.KafkaMessageListenerContainer"
+          init-method="doStart">
+        <constructor-arg ref="consumerFactory"/>
+        <constructor-arg ref="containerProperties"/>
+    </bean>
+
+    <!-- kafkaMessageAckListenerAdapter -->
+    <bean id="kafkaMessageListenerAdapter" class="com.bytecompute.tankms.consumer.KafkaMessageListenerAdapter"
+          init-method="initMessageHandlers"/>
+
+    <import resource="classpath*:META-INF/*-consumer.xml"/>
+</beans>
